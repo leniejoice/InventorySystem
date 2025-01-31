@@ -13,6 +13,8 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class InventoryService {
 
@@ -29,8 +31,26 @@ public class InventoryService {
             connection = dbConnection.connect();
         }
     }
-
-    public InventoryData getById(int id) {
+    
+   public InventoryData getByEngineNumber(String engineNumber) {
+        InventoryData inventoryData = null;
+        String query = "SELECT * FROM inventory.inventory WHERE engine_number = ?";
+        try (PreparedStatement preparedStatement = prepareStatement(query)) {
+            preparedStatement.setString(1,engineNumber);
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    inventoryData = toInventoryData(resultSet);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace(); // Consider using a logger
+        }
+        return inventoryData;
+    }
+  
+   
+   
+   public InventoryData getById(int id) {
         InventoryData inventoryData = null;
         String query = "SELECT * FROM inventory.inventory WHERE id = ?";
         try (PreparedStatement preparedStatement = prepareStatement(query)) {
@@ -41,7 +61,7 @@ public class InventoryService {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace(); // Consider using a logger
+            Logger.getLogger(getClass().getName()).log(Level.SEVERE, "Database error while retrieving inventory data", e);
         }
         return inventoryData;
     }
@@ -187,7 +207,10 @@ public class InventoryService {
 
     private InventoryData toInventoryData(ResultSet resultSet) throws SQLException {
         InventoryData inventoryData = new InventoryData();
+        inventoryData.setId(resultSet.getInt("id"));
         inventoryData.setDateEntered(resultSet.getDate("date_entered"));
+        inventoryData.setBrand(resultSet.getString("brand"));
+        inventoryData.setEngineNumber(resultSet.getString("engine_number"));
 
         int stockLabelStatusId = resultSet.getInt("stock_label_status");
         if (stockLabelStatusId > 0) {
@@ -196,9 +219,6 @@ public class InventoryService {
                 inventoryData.setStockLabelStatus(stockLabelStatus);
             }
         }
-
-        inventoryData.setBrand(resultSet.getString("brand"));
-        inventoryData.setEngineNumber(resultSet.getString("engine_number"));
 
         int purchaseStatusId = resultSet.getInt("purchase_status");
         if (purchaseStatusId > 0) {

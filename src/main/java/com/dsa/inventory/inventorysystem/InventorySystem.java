@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -122,6 +124,11 @@ public class InventorySystem extends javax.swing.JFrame {
         deleteButton.setFont(new java.awt.Font("Century Gothic", 1, 12)); // NOI18N
         deleteButton.setForeground(new java.awt.Color(255, 255, 255));
         deleteButton.setText("Delete");
+        deleteButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                deleteButtonActionPerformed(evt);
+            }
+        });
 
         clearButton.setFont(new java.awt.Font("Century Gothic", 1, 12)); // NOI18N
         clearButton.setText("Clear");
@@ -134,13 +141,13 @@ public class InventorySystem extends javax.swing.JFrame {
         inventoryTable.setFont(new java.awt.Font("Century Gothic", 0, 12)); // NOI18N
         inventoryTable.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
-                {null, null, null, null, null},
-                {null, null, null, null, null},
-                {null, null, null, null, null},
-                {null, null, null, null, null}
+                {null, null, null, null, null, null},
+                {null, null, null, null, null, null},
+                {null, null, null, null, null, null},
+                {null, null, null, null, null, null}
             },
             new String [] {
-                "Date Entered", "Stock Label ", "Brand", "Engine Number", "Status"
+                "ID", "Date Entered", "Stock Label ", "Brand", "Engine Number", "Status"
             }
         ));
         inventoryTable.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -314,6 +321,7 @@ public class InventorySystem extends javax.swing.JFrame {
 
         for(InventoryData inventoryData : allInventory) {
             Vector<Object> rowData = new Vector<>();
+            rowData.add(inventoryData.getId());
             rowData.add(inventoryData.getDate());
             rowData.add(inventoryData.getStockLabelStatus());
             rowData.add(inventoryData.getBrand());
@@ -342,16 +350,41 @@ public class InventorySystem extends javax.swing.JFrame {
         // Show error message if exception occurs
             JOptionPane.showMessageDialog(null, "Error updating inventory: " + e.getMessage(), "Update Error", JOptionPane.ERROR_MESSAGE);
         }
+        refreshTable();
     }//GEN-LAST:event_updateButtonActionPerformed
 
     private void inventoryTableMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_inventoryTableMouseClicked
         DefaultTableModel model = (DefaultTableModel) inventoryTable.getModel();
         int selectedIndex = inventoryTable.getSelectedRow();
-        if (selectedIndex >= 0) { // Ensure a row is selected
-            int id = Integer.parseInt(model.getValueAt(selectedIndex, 0).toString());
-            loadInventoryValues(id);
-        }
+        int id = Integer.parseInt(model.getValueAt(selectedIndex, 0).toString());
+        loadInventoryValues(id);
     }//GEN-LAST:event_inventoryTableMouseClicked
+
+    private void deleteButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteButtonActionPerformed
+        DefaultTableModel model = (DefaultTableModel) inventoryTable.getModel();
+        int selectedIndex = inventoryTable.getSelectedRow();
+
+        if (selectedIndex == -1) {
+            JOptionPane.showMessageDialog(this, "Please select an employee to delete.");
+            return;
+        }
+
+        int id = Integer.parseInt(model.getValueAt(selectedIndex, 0).toString());
+        int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete this record?", "Confirmation", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            try{
+                inventoryService.deleteInventory(id);
+                
+            }catch(RuntimeException e ){
+                JOptionPane.showMessageDialog(this, "Error: Record not deleted");
+                throw e;
+            }
+            JOptionPane.showMessageDialog(this, "Record successfully deleted");
+
+            clearButtonActionPerformed(null);
+            refreshTable();
+        }
+    }//GEN-LAST:event_deleteButtonActionPerformed
     
     private void validateRequiredFields(InventoryData inventoryData){
         List<String> errors = new ArrayList();
@@ -428,14 +461,12 @@ public class InventorySystem extends javax.swing.JFrame {
     
     }
     
+ 
+            
+    
     private void loadInventoryValues(int id) {
         InventoryData inventoryData = inventoryService.getById(id);
-
-        if (inventoryData == null) {
-            JOptionPane.showMessageDialog(this, "No inventory data found for the given ID.");
-            return; // Exit the method if no data is found
-        }
-
+        
         // Set the fields with the retrieved data
         dateValue.setText(inventoryData.getFormattedDate()); // Ensure this method exists and formats the date correctly
         brandValue.setText(inventoryData.getBrand());
@@ -444,15 +475,15 @@ public class InventorySystem extends javax.swing.JFrame {
         // Reset dropdowns to default
         stockLabelDropdown.setSelectedIndex(0);
         purchaseStatusDropdown.setSelectedIndex(0);
-
+        
         // Set the selected item for stock label status
         if (inventoryData.getStockLabelStatus() != null) {
-            stockLabelDropdown.setSelectedItem(new ComboItem(inventoryData.getStockLabelStatus().getId(), inventoryData.getStockLabelStatus().getStockLabelStatus()));
+            stockLabelDropdown.setSelectedItem(new ComboItem(inventoryData.getStockLabelStatus().getId(), inventoryData.getStockLabelStatus().getFinalStockLabelStatus()));
         }
-
+        
         // Set the selected item for purchase status
         if (inventoryData.getPurchaseStatus() != null) {
-            purchaseStatusDropdown.setSelectedItem(new ComboItem(inventoryData.getPurchaseStatus().getId(), inventoryData.getPurchaseStatus().getPurchaseStatus()));
+            purchaseStatusDropdown.setSelectedItem(new ComboItem(inventoryData.getPurchaseStatus().getId(), inventoryData.getPurchaseStatus().getFinalPurchaseStatus()));
         }
     }
     
@@ -460,7 +491,7 @@ public class InventorySystem extends javax.swing.JFrame {
         List<StockLabelStatus> stockStatuses = inventoryService.getAllStockLabelStatus();
         stockLabelDropdown.addItem(new ComboItem(null,"Select Status"));
         for(StockLabelStatus stockLabelStatus : stockStatuses){
-            stockLabelDropdown.addItem(new ComboItem(stockLabelStatus.getId(),stockLabelStatus.getStockLabelStatus()));
+            stockLabelDropdown.addItem(new ComboItem(stockLabelStatus.getId(),stockLabelStatus.getFinalStockLabelStatus()));
         }
     }
     
@@ -468,7 +499,7 @@ public class InventorySystem extends javax.swing.JFrame {
         List<PurchaseStatus> purchaseStatuses = inventoryService.getAllPurchaseStatus();
         purchaseStatusDropdown.addItem(new ComboItem(null,"Select Status"));
         for(PurchaseStatus purchaseStatus: purchaseStatuses){
-            purchaseStatusDropdown.addItem(new ComboItem(purchaseStatus.getId(),purchaseStatus.getPurchaseStatus()));
+            purchaseStatusDropdown.addItem(new ComboItem(purchaseStatus.getId(),purchaseStatus.getFinalPurchaseStatus()));
         }
     }    
     /**

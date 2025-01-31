@@ -16,7 +16,7 @@ public class PurchaseStatus {
         return id;
     }
     
-    public String getPurchaseStatus(){
+    public String getFinalPurchaseStatus(){
         return status;
     }
     

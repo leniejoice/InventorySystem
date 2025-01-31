@@ -16,7 +16,7 @@ public class StockLabelStatus {
         return id;
     }
     
-    public String getStockLabelStatus(){
+    public String getFinalStockLabelStatus(){
         return status;
     }
     
